@@ -6,6 +6,7 @@ using System.Text;
 using DotNetBackend.Data;
 using DotNetBackend.DTO.User;
 using DotNetBackend.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,7 +30,7 @@ namespace DotNetBackend.Controllers
         }
 
 
-        [HttpPost("register")]
+        [HttpPost("register"), AllowAnonymous]
         public async Task<IActionResult> Register(UserRegisterationDto dto)
         {
             if (!ModelState.IsValid)
@@ -69,7 +70,7 @@ namespace DotNetBackend.Controllers
         }
 
         // POST: api/auth/login
-        [HttpPost("login")]
+        [HttpPost("login"), AllowAnonymous]
         public async Task<IActionResult> Login(UserLoginDto dto)
         {
             if (!ModelState.IsValid)

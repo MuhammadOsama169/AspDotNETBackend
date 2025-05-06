@@ -21,7 +21,7 @@ namespace DotNetBackend.Models
         // User hasMany Posts
         public ICollection<Post> ?Posts { get; set; }
         // User hasMany Workspaces but basic user should only have 1 and business 2
-
+        //public ICollection<Workspace>? Workspaces { get; set; }
 
     }
 }

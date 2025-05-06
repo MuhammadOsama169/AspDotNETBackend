@@ -3,13 +3,34 @@ using DotNetBackend.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-
+using DotNetBackend.Features.Post.Commands;
+using DotNetBackend.Features.Post.Commands.CreatePost;
+using DotNetBackend.Features.Post.Queries;
+using DotNetBackend.Features.Post.Queries.GetAllPosts;
+using DotNetBackend.Mappings;
+using Swashbuckle.AspNetCore.Filters;
+using DotNetBackend.Repositories;
+using DotNetBackend.Repositories.Interfaces;
+using FluentValidation;
+using Microsoft.OpenApi.Models;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddMediatR(configuration =>
+{
+    configuration.RegisterServicesFromAssembly(typeof(Program).Assembly);
+});
+//repo and validation
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped(
+    typeof(IGenericRepository<>),
+    typeof(GenericRepository<>)
+);
+builder.Services.AddScoped<IValidator<GetAllUserPostsQuery>, GetAllUserPostsQueryValidator>();
+builder.Services.AddScoped<IValidator<CreatePostCommand>, CreatePostCommandValidator>();
 
 
 // Configure JWT Authentication
@@ -28,14 +49,37 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
         };
     });
-
-
 builder.Services.AddAuthorization();
 
-
-// Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo() { Title = "Test app", Version = "v1" });
+
+    var securityScheme = new OpenApiSecurityScheme
+    {
+        Description = "JWT Auth Bearer Scheme",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = "Bearer",
+        }
+    };
+    options.AddSecurityDefinition("Bearer", securityScheme);
+
+    var securityRequirement = new OpenApiSecurityRequirement { { securityScheme, new[] { "Bearer" } } };
+
+    options.AddSecurityRequirement(securityRequirement);
+});
+
+
+MapsterConfigurations.Configure();
+
 builder.Services.AddControllers();
 
 var app = builder.Build();
