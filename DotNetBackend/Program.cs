@@ -8,10 +8,13 @@ using DotNetBackend.Features.Post.Commands.CreatePost;
 using DotNetBackend.Features.Post.Queries;
 using DotNetBackend.Features.Post.Queries.GetAllPosts;
 using DotNetBackend.Mappings;
+using DotNetBackend.Models;
 using Swashbuckle.AspNetCore.Filters;
 using DotNetBackend.Repositories;
 using DotNetBackend.Repositories.Interfaces;
+using DotNetBackend.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.OpenApi.Models;
 
 
@@ -25,6 +28,12 @@ builder.Services.AddMediatR(configuration =>
 });
 //repo and validation
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IAuthRepository, AuthRepository>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+
+builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped(
     typeof(IGenericRepository<>),
     typeof(GenericRepository<>)

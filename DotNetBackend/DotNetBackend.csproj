@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <Folder Include="Features\Post\Commands\UpdatePost\" />
+    <Folder Include="Features\Queries\" />
   </ItemGroup>
 
 </Project>

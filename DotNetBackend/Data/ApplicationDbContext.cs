@@ -10,7 +10,9 @@ namespace DotNetBackend.Data
             : base(options)
         {
         }
-
+        public DbSet<OtpEntry> Otps { get; set; } 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+        
         public DbSet<User> Users { get; set; }
         public DbSet<Post> Posts { get; set; }
         //public DbSet<Workspace> Workspaces { get; set; }

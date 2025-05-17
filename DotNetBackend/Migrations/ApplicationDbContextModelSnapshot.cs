@@ -22,6 +22,32 @@ namespace DotNetBackend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("DotNetBackend.Models.OtpEntry", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Used")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Otps");
+                });
+
             modelBuilder.Entity("DotNetBackend.Models.Post", b =>
                 {
                     b.Property<int>("Id")
@@ -46,6 +72,33 @@ namespace DotNetBackend.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("DotNetBackend.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeviceInfo")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("RefreshTokens");
                 });
 
             modelBuilder.Entity("DotNetBackend.Models.User", b =>
@@ -76,38 +129,6 @@ namespace DotNetBackend.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("DotNetBackend.Models.Workspace", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid?>("RefId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Setting")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Workspace");
-                });
-
             modelBuilder.Entity("DotNetBackend.Models.Post", b =>
                 {
                     b.HasOne("DotNetBackend.Models.User", "User")
@@ -119,22 +140,9 @@ namespace DotNetBackend.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DotNetBackend.Models.Workspace", b =>
-                {
-                    b.HasOne("DotNetBackend.Models.User", "User")
-                        .WithMany("Workspaces")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("DotNetBackend.Models.User", b =>
                 {
                     b.Navigation("Posts");
-
-                    b.Navigation("Workspaces");
                 });
 #pragma warning restore 612, 618
         }

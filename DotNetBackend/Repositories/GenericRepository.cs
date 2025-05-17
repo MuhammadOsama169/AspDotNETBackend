@@ -1,4 +1,6 @@
 // Repositories/GenericRepository.cs
+
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -47,5 +49,25 @@ namespace DotNetBackend.Repositories
         }
         public Task SaveChangesAsync(CancellationToken ct = default)
             => _db.SaveChangesAsync(ct);
+        public IQueryable<T> Query()
+        {
+            return _dbSet.AsQueryable();
+        }
+        public Task<T?> FirstOrDefaultAsync(
+            Expression<Func<T,bool>> predicate,
+            CancellationToken ct = default
+        )
+        {
+            return _dbSet.FirstOrDefaultAsync(predicate, ct);
+        }
+
+        public async Task<IReadOnlyList<T>> GetListAsync(Expression<Func<T,bool>> predicate,
+            CancellationToken ct = default)
+        {
+            var list = await _dbSet.Where(predicate)
+                .ToListAsync(ct)
+                .ConfigureAwait(false);
+            return list; 
+        }
     }
 }

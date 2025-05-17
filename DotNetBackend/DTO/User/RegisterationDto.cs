@@ -1,8 +1,9 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using MediatR;
 
 namespace DotNetBackend.DTO.User
 {
-    public class UserRegisterationDto
+    public class RegistrationDto: IRequest<RegistrationDto>
     {
         [Required]
         [MaxLength(255)]

@@ -5,7 +5,11 @@ using System.Security.Claims;
 using System.Text;
 using DotNetBackend.Data;
 using DotNetBackend.DTO.User;
+using DotNetBackend.Features.Commands.Auth;
+using DotNetBackend.Features.Commands.Login;
+using DotNetBackend.Features.Commands.Register;
 using DotNetBackend.Models;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,122 +21,73 @@ namespace DotNetBackend.Controllers
 {
     [ApiController]
     [Route("api")]
-    public class AuthController :ControllerBase 
+    public class AuthController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IConfiguration _configuration;
-
-        public AuthController(ApplicationDbContext context, IConfiguration configuration)
+        private readonly IMediator _mediator;
+        private readonly IOtpService _otpService;
+        public AuthController(
+            IOtpService otpService,
+            IMediator mediator
+            )
         {
-            _context = context;
-            _configuration = configuration;
-
+            _mediator = mediator;
+            _otpService = otpService;
         }
 
 
         [HttpPost("register"), AllowAnonymous]
-        public async Task<IActionResult> Register(UserRegisterationDto dto)
+        public async Task<IActionResult> Register([FromBody] RegistrationDto dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            var cmd = new RegisterUserCommand(dto.Name, dto.Email, dto.Password);
+            var result = await _mediator.Send(cmd);
 
-            var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (existingUser != null)
-            {
-                return Conflict(new { message = "A user with that email already exists." });
-            }
+            if (result.UserId == Guid.Empty)
+                return Conflict(new { message = "Email already in use." });
 
-
-            var user = new User
-            {
-                Name = dto.Name,
-                Email = dto.Email
-            };
-
-            // Hash the password using PasswordHasher.
-            var passwordHasher = new PasswordHasher<User>();
-            user.PasswordHash = passwordHasher.HashPassword(user, dto.Password);
-
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            // Generate a JWT token for the new user.
-            var token = GenerateJwtToken(user);
-
-            var response = new
-            {
-                user = new { user.Id, user.Name, user.Email },
-                token = token,
-                message = "User registered successfully."
-            };
-
-            return Ok(response);
+            return Ok(result);
         }
 
-        // POST: api/auth/login
         [HttpPost("login"), AllowAnonymous]
-        public async Task<IActionResult> Login(UserLoginDto dto)
+        public async Task<IActionResult> Login([FromBody] UserLoginDto  dto)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            // Find the user by email.
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null)
-                return Unauthorized(new { message = "Invalid email or password." });
-
-            // Verify the password.
-            var passwordHasher = new PasswordHasher<User>();
-            var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
-            if (result == PasswordVerificationResult.Failed)
-                return Unauthorized(new { message = "Invalid email or password." });
-
-            // Generate JWT token.
-            var token = GenerateJwtToken(user);
-            var response = new
+            try
             {
-                user = new { user.Id, user.Name, user.Email },
-                token = token,
-                message = "User logged in successfully."
-            };
-
-            return Ok(response);
+                var result = await _mediator.Send(new LoginUserCommand
+                {
+                    Email    = dto.Email,
+                    Password = dto.Password
+                });
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { message = "Invalid email or password." });
+            }
         }
 
-        // POST: api/auth/logout
-        [HttpPost("logout")]
-        public IActionResult Logout()
+        [HttpPost("logout"), Authorize]
+        public async Task<IActionResult> Logout([FromBody] LogoutDto dto)
         {
+            var sub = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(sub, out var userId))
+                return Unauthorized();
 
-            return Ok(new { message = "Logged out successfully." });
+            // mediator.Send returns Unit, which we ignore
+            await _mediator.Send(new LogoutCommand {
+                UserId       = userId,
+                RefreshToken = dto.RefreshToken
+            });
+
+            // now return a friendly message
+            return Ok(new { message = "Action successful." });
         }
-
-        // -------------------- //
-        private string GenerateJwtToken(User user)
+        
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp(Guid userId, string code)
         {
-            var secretKey = _configuration["Jwt:SecretKey"] ?? throw new Exception("JWT SecretKey not configured");
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email!),
-                new Claim(ClaimTypes.Name, user.Name!)
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: issuer,
-                audience: audience,
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(72),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var ok = await _otpService.ValidateAsync(userId, code);
+            if (!ok) return BadRequest("Invalid or expired code");
+            return Ok("Email verified");
         }
     }
 }
